@@ -16,6 +16,8 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/config.js"></script>
+<script src="https://web3forms.com/client/script.js" async defer></script>
 <script>
   tailwind.config = {
     theme: {
@@ -646,35 +648,44 @@
       </div>
 
       <form id="leadForm" class="grid md:grid-cols-2 gap-4">
+        <input type="hidden" name="access_key" value="">
+        <input type="hidden" name="subject" value="Vexia — Novo lead (demo)">
+        <input type="hidden" name="from_name" value="Site Vexia">
+        <input type="checkbox" name="botcheck" class="hidden" style="display:none" tabindex="-1" autocomplete="off">
         <label class="sr-only" for="lf-nome">Nome</label>
-        <input id="lf-nome" required type="text" placeholder="Nome"
+        <input id="lf-nome" name="nome" required type="text" placeholder="Nome"
           class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
         <label class="sr-only" for="lf-empresa">Empresa ou prefeitura</label>
-        <input id="lf-empresa" required type="text" placeholder="Empresa ou prefeitura"
+        <input id="lf-empresa" name="empresa" required type="text" placeholder="Empresa ou prefeitura"
           class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
         <label class="sr-only" for="lf-email">E-mail</label>
-        <input id="lf-email" required type="email" placeholder="E-mail corporativo"
+        <input id="lf-email" name="email" required type="email" placeholder="E-mail corporativo"
           class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
         <label class="sr-only" for="lf-tel">Telefone</label>
-        <input id="lf-tel" required type="tel" placeholder="Telefone / WhatsApp"
+        <input id="lf-tel" name="telefone" required type="tel" placeholder="Telefone / WhatsApp"
           class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
         <label class="sr-only" for="lf-frota">Tamanho da frota</label>
-        <select id="lf-frota" class="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
-          <option>Tamanho da frota...</option>
+        <select id="lf-frota" name="frota" class="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
+          <option value="">Tamanho da frota...</option>
           <option>1 a 10 veículos</option>
           <option>11 a 30 veículos</option>
           <option>31 a 80 veículos</option>
           <option>Mais de 80 veículos</option>
         </select>
         <label class="sr-only" for="lf-msg">Mensagem</label>
-        <textarea id="lf-msg" rows="3" placeholder="Conte rapidinho sobre sua operação (opcional)"
+        <textarea id="lf-msg" name="mensagem" rows="3" placeholder="Conte rapidinho sobre sua operação (opcional)"
           class="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"></textarea>
-        <button type="submit"
-          class="md:col-span-2 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-xl font-semibold transition shadow-xl shadow-blue-600/30">
-          Quero ver o Vexia em ação
+        <div class="md:col-span-2 h-captcha" data-captcha="true"></div>
+        <button id="leadSubmit" type="submit"
+          class="md:col-span-2 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold transition shadow-xl shadow-blue-600/30">
+          <span data-label>Quero ver o Vexia em ação</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
         </button>
       </form>
+      <div id="leadError" class="hidden mt-6 items-center gap-3 bg-rose-500/10 border border-rose-500/40 text-rose-300 rounded-xl px-5 py-4">
+        <i data-lucide="alert-circle" class="w-5 h-5"></i>
+        <span class="text-sm">Não conseguimos enviar agora. Tente novamente ou escreva para <a href="vexiaContato.html" class="underline">nosso contato</a>.</span>
+      </div>
 
       <div id="leadSuccess" class="hidden mt-6 flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 rounded-xl px-5 py-4">
         <i data-lucide="check-circle-2" class="w-5 h-5"></i>
@@ -816,14 +827,54 @@
 
   const form = document.getElementById('leadForm');
   const success = document.getElementById('leadSuccess');
-  form.addEventListener('submit', function (e) {
+  const errorBox = document.getElementById('leadError');
+  const submitBtn = document.getElementById('leadSubmit');
+  const submitLabel = submitBtn.querySelector('[data-label]');
+  const accessKey = (window.VEXIA_CONFIG && window.VEXIA_CONFIG.WEB3FORMS_KEY) || '';
+  form.querySelector('input[name="access_key"]').value = accessKey;
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    form.reset();
-    success.classList.remove('hidden');
-    success.classList.add('flex');
-    lucide.createIcons();
-    showToast('Recebemos seu contato!');
-    success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!accessKey) {
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+      lucide.createIcons();
+      return;
+    }
+    const captchaResp = form.querySelector('textarea[name="h-captcha-response"]');
+    if (!captchaResp || !captchaResp.value) {
+      showToast('Confirme o captcha antes de enviar.');
+      return;
+    }
+    errorBox.classList.add('hidden');
+    errorBox.classList.remove('flex');
+    submitBtn.disabled = true;
+    const originalLabel = submitLabel.textContent;
+    submitLabel.textContent = 'Enviando...';
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: new FormData(form),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Falha no envio');
+      form.reset();
+      if (window.hcaptcha) try { window.hcaptcha.reset(); } catch (_) {}
+      success.classList.remove('hidden');
+      success.classList.add('flex');
+      lucide.createIcons();
+      showToast('Recebemos seu contato!');
+      success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      if (window.hcaptcha) try { window.hcaptcha.reset(); } catch (_) {}
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+      lucide.createIcons();
+      showToast('Erro ao enviar. Tente novamente.');
+    } finally {
+      submitBtn.disabled = false;
+      submitLabel.textContent = originalLabel;
+    }
   });
 </script>
 </body>

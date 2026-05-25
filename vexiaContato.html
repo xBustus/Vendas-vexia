@@ -11,6 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="https://web3forms.com/client/script.js" async defer></script>
 <style>
   html { scroll-behavior: smooth; }
   body { font-family: 'Inter', sans-serif; background: #020617; }
@@ -119,20 +121,24 @@
         <p class="text-slate-400 text-sm mb-8">Respondemos em até 1 dia útil.</p>
 
         <form id="contactForm" class="grid md:grid-cols-2 gap-4">
+          <input type="hidden" name="access_key" value="">
+          <input type="hidden" name="subject" value="Vexia — Nova mensagem do site (Contato)">
+          <input type="hidden" name="from_name" value="Site Vexia — Contato">
+          <input type="checkbox" name="botcheck" class="hidden" style="display:none" tabindex="-1" autocomplete="off">
           <label class="sr-only" for="ct-nome">Nome</label>
-          <input id="ct-nome" required type="text" placeholder="Nome"
+          <input id="ct-nome" name="nome" required type="text" placeholder="Nome"
             class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
           <label class="sr-only" for="ct-empresa">Empresa</label>
-          <input id="ct-empresa" type="text" placeholder="Empresa (opcional)"
+          <input id="ct-empresa" name="empresa" type="text" placeholder="Empresa (opcional)"
             class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
           <label class="sr-only" for="ct-email">E-mail</label>
-          <input id="ct-email" required type="email" placeholder="E-mail"
+          <input id="ct-email" name="email" required type="email" placeholder="E-mail"
             class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
           <label class="sr-only" for="ct-tel">Telefone</label>
-          <input id="ct-tel" type="tel" placeholder="Telefone (opcional)"
+          <input id="ct-tel" name="telefone" type="tel" placeholder="Telefone (opcional)"
             class="bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
           <label class="sr-only" for="ct-assunto">Assunto</label>
-          <select id="ct-assunto" required
+          <select id="ct-assunto" name="assunto" required
             class="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition">
             <option value="">Selecione o assunto...</option>
             <option>Quero conhecer o Vexia (vendas)</option>
@@ -143,11 +149,12 @@
             <option>Outro</option>
           </select>
           <label class="sr-only" for="ct-msg">Mensagem</label>
-          <textarea id="ct-msg" required rows="5" placeholder="Sua mensagem"
+          <textarea id="ct-msg" name="mensagem" required rows="5" placeholder="Sua mensagem"
             class="md:col-span-2 bg-slate-800/60 border border-slate-700 rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"></textarea>
-          <button type="submit"
-            class="md:col-span-2 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-4 rounded-xl font-semibold transition shadow-xl shadow-blue-600/30">
-            Enviar mensagem
+          <div class="md:col-span-2 h-captcha" data-captcha="true"></div>
+          <button id="contactSubmit" type="submit"
+            class="md:col-span-2 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold transition shadow-xl shadow-blue-600/30">
+            <span data-label>Enviar mensagem</span>
             <i data-lucide="send" class="w-4 h-4"></i>
           </button>
         </form>
@@ -155,6 +162,10 @@
         <div id="contactSuccess" class="hidden mt-6 items-center gap-3 bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 rounded-xl px-5 py-4">
           <i data-lucide="check-circle-2" class="w-5 h-5"></i>
           <span class="text-sm">Mensagem recebida. Retornamos em até 1 dia útil.</span>
+        </div>
+        <div id="contactError" class="hidden mt-6 items-center gap-3 bg-rose-500/10 border border-rose-500/40 text-rose-300 rounded-xl px-5 py-4">
+          <i data-lucide="alert-circle" class="w-5 h-5"></i>
+          <span class="text-sm">Não conseguimos enviar agora. Tente novamente em instantes.</span>
         </div>
       </div>
 
@@ -232,37 +243,80 @@
     toast._t = setTimeout(() => toast.classList.remove('show'), 3000);
   }
 
-  // Ofuscação de e-mail — monta o mailto em runtime para evitar scraping
-  (function setupMailLinks() {
-    const user = ['i','d','5','8','6','1','7','3','b','i','e','l'].join('');
-    const domain = 'gmail' + '.' + 'com';
-    const address = user + '@' + domain;
-    const subjects = {
-      vendas:    'Vexia — Vendas e demonstração',
-      suporte:   'Vexia — Suporte',
-      parcerias: 'Vexia — Parcerias',
-      imprensa:  'Vexia — Imprensa',
-    };
-    document.querySelectorAll('.vexia-mail').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        const key = el.getAttribute('data-mail');
-        const subject = encodeURIComponent(subjects[key] || 'Vexia');
-        window.location.href = `mailto:${address}?subject=${subject}`;
-      });
-    });
-  })();
-
   const form = document.getElementById('contactForm');
   const success = document.getElementById('contactSuccess');
-  form.addEventListener('submit', function (e) {
+  const errorBox = document.getElementById('contactError');
+  const submitBtn = document.getElementById('contactSubmit');
+  const submitLabel = submitBtn.querySelector('[data-label]');
+  const assuntoSelect = document.getElementById('ct-assunto');
+  const accessKey = (window.VEXIA_CONFIG && window.VEXIA_CONFIG.WEB3FORMS_KEY) || '';
+  form.querySelector('input[name="access_key"]').value = accessKey;
+
+  // Cards de canal: rolar para o form e pré-selecionar o assunto correspondente
+  const assuntoPorCanal = {
+    vendas:    'Quero conhecer o Vexia (vendas)',
+    suporte:   'Sou cliente e preciso de suporte',
+    parcerias: 'Proposta de parceria',
+    imprensa:  'Solicitação de imprensa',
+  };
+  document.querySelectorAll('.vexia-mail').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const canal = el.getAttribute('data-mail');
+      const alvo = assuntoPorCanal[canal];
+      if (alvo) {
+        for (const opt of assuntoSelect.options) {
+          if (opt.text === alvo) { assuntoSelect.value = opt.value || opt.text; break; }
+        }
+      }
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => document.getElementById('ct-nome').focus({ preventScroll: true }), 400);
+    });
+  });
+
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    form.reset();
-    success.classList.remove('hidden');
-    success.classList.add('flex');
-    lucide.createIcons();
-    showToast('Mensagem enviada!');
-    success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!accessKey) {
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+      lucide.createIcons();
+      return;
+    }
+    const captchaResp = form.querySelector('textarea[name="h-captcha-response"]');
+    if (!captchaResp || !captchaResp.value) {
+      showToast('Confirme o captcha antes de enviar.');
+      return;
+    }
+    errorBox.classList.add('hidden');
+    errorBox.classList.remove('flex');
+    submitBtn.disabled = true;
+    const originalLabel = submitLabel.textContent;
+    submitLabel.textContent = 'Enviando...';
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: new FormData(form),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Falha no envio');
+      form.reset();
+      if (window.hcaptcha) try { window.hcaptcha.reset(); } catch (_) {}
+      success.classList.remove('hidden');
+      success.classList.add('flex');
+      lucide.createIcons();
+      showToast('Mensagem enviada!');
+      success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      if (window.hcaptcha) try { window.hcaptcha.reset(); } catch (_) {}
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+      lucide.createIcons();
+      showToast('Erro ao enviar. Tente novamente.');
+    } finally {
+      submitBtn.disabled = false;
+      submitLabel.textContent = originalLabel;
+    }
   });
 </script>
 </body>
